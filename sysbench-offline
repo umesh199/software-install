@@ -1,0 +1,67 @@
+import os
+import subprocess
+import zipfile
+import shutil
+
+def install_dependencies():
+    """Install required dependencies (Development Tools and cmake)."""
+    print("Installing required dependencies...")
+    try:
+        subprocess.run(["yum", "groupinstall", "Development Tools", "-y"], check=True)
+        subprocess.run(["yum", "install", "cmake", "-y"], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error installing dependencies: {e}")
+        exit(1)
+
+def extract_sysbench():
+    """Extract Sysbench source from the zip file."""
+    sysbench_dir = "/opt/sysbench"
+    zip_file_path = os.path.join(sysbench_dir, "sysbench-master.zip")
+    extract_path = os.path.join(sysbench_dir, "sysbench-master")
+    
+    if not os.path.exists(zip_file_path):
+        print(f"Sysbench zip file not found at {zip_file_path}")
+        exit(1)
+
+    # Remove existing extraction folder if it exists
+    if os.path.exists(extract_path):
+        shutil.rmtree(extract_path)
+    
+    print("Extracting Sysbench source...")
+    with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+        zip_ref.extractall(sysbench_dir)
+    return extract_path
+
+def build_sysbench(source_dir):
+    """Build Sysbench from the extracted source."""
+    print("Building Sysbench...")
+    build_dir = os.path.join(source_dir, "build")
+
+    # Create a build directory
+    if not os.path.exists(build_dir):
+        os.makedirs(build_dir)
+
+    try:
+        subprocess.run(["cmake", ".."], cwd=build_dir, check=True)
+        subprocess.run(["make", "-C", build_dir], check=True)
+        subprocess.run(["make", "install", "-C", build_dir], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error building Sysbench: {e}")
+        exit(1)
+
+def verify_installation():
+    """Verify the Sysbench installation."""
+    print("Verifying Sysbench installation...")
+    try:
+        result = subprocess.run(["sysbench", "--version"], capture_output=True, check=True, text=True)
+        print(result.stdout)
+    except subprocess.CalledProcessError as e:
+        print(f"Error verifying Sysbench installation: {e}")
+        exit(1)
+
+if __name__ == "__main__":
+    install_dependencies()
+    source_dir = extract_sysbench()
+    build_sysbench(source_dir)
+    verify_installation()
+    print("Sysbench installation completed successfully!")
